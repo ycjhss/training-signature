@@ -1,102 +1,37 @@
 <!DOCTYPE html>
-<html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>연수 서명부</title>
-    <style>
-        body { font-family: 'Arial', sans-serif; padding: 20px; }
-        .hidden { display: none; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { border: 1px solid #000; padding: 8px; text-align: center; vertical-align: middle; }
-        /* 인쇄 시 서명 이미지 크기 조절 */
-        .sig-img { width: 100px; height: 50px; object-fit: contain; }
-        button { padding: 10px; margin: 5px; cursor: pointer; }
-    </style>
-</head>
+<html>
+<head><base target="_top"></head>
 <body>
-
   <div id="app">
-    <h1>연수 서명 시스템</h1>
-    <div id="trainingList">
-      <button onclick="refreshList()">목록 새로고침</button>
-      <table id="listTable">
-        <thead><tr><th>연수명</th><th>일자</th><th>기능</th></tr></thead>
-        <tbody id="listBody"></tbody>
-      </table>
-    </div>
-
-    <div id="signList" class="hidden">
-      <h2 id="signListHeading"></h2>
-      <button onclick="document.getElementById('signList').classList.add('hidden'); document.getElementById('trainingList').classList.remove('hidden');">목록으로</button>
-      <button onclick="printSignList()">인쇄하기</button>
-      <table id="signTable">
-        <thead><tr><th>성명</th><th>소속/학번</th><th>역할</th><th>시간</th><th>서명</th></tr></thead>
-        <tbody id="signListBody"></tbody>
-      </table>
-    </div>
+    <h1>연수 서명 명부</h1>
+    <table id="listTable" border="1">
+      <thead><tr><th>연수명</th><th>일자</th><th>명부</th></tr></thead>
+      <tbody id="listBody"></tbody>
+    </table>
   </div>
 
   <script>
-    // 💡 구글 웹앱 URL (끝이 /exec로 끝나는 주소)
+    // 💡 매우 중요: 구글 앱스크립트에서 배포 후 나오는 [웹 앱 URL]을 여기에 넣으세요
     const API_URL = "https://script.google.com/macros/s/AKfycbzLWWQsAg-bW1v_q1ZhwN9Ui1Qo33SqfU6ZStb0fv3-F0JUCRcTmfYRFuRtA_7uQH2P/exec";
 
-    async function callAPI(action, params = {}) {
-      const response = await fetch(API_URL, {
-        method: 'POST',
-        body: JSON.stringify({ action, ...params })
-      });
-      return await response.json();
-    }
-
-    async function refreshList() {
-      const res = await callAPI('getTrainingList');
+    async function loadList() {
+      const res = await fetch(API_URL, {method:'POST', body: JSON.stringify({action: 'getTrainingList'})}).then(r=>r.json());
       const tbody = document.getElementById('listBody');
-      tbody.innerHTML = '';
       res.data.forEach(item => {
-        tbody.innerHTML += `<tr>
-          <td>${item.title}</td>
-          <td>${item.date}</td>
-          <td><button onclick="viewSignList('${item.id}', '${item.title}')">명부보기</button></td>
-        </tr>`;
+        tbody.innerHTML += `<tr><td>${item.title}</td><td>${item.date}</td>
+          <td><button onclick="viewSign('${item.id}', '${item.title}')">보기</button></td></tr>`;
       });
     }
-
-    async function viewSignList(id, title) { 
-      document.getElementById('signListHeading').textContent = `${title} 명부`; 
-      const res = await callAPI('getSignatures', { trainingId: id });
-      const tbody = document.getElementById('signListBody');
-      tbody.innerHTML = '';
+    
+    async function viewSign(id, title) {
+      const res = await fetch(API_URL, {method:'POST', body: JSON.stringify({action: 'getSignatures', trainingId: id})}).then(r=>r.json());
+      let html = `<h2>${title}</h2><button onclick="location.reload()">목록으로</button><table border="1">`;
       res.data.forEach(item => {
-        // [중요 수정] 서명 링크를 img 태그로 감싸서 인쇄 시 보이게 함
-        tbody.innerHTML += `<tr>
-          <td>${item.name}</td>
-          <td>${item.affiliation}</td>
-          <td>${item.role}</td>
-          <td>${item.timestamp}</td>
-          <td><img src="${item.url}" class="sig-img" /></td>
-        </tr>`;
+        html += `<tr><td>${item.name}</td><td><img src="${item.url}" style="width:100px;"></td></tr>`;
       });
-      document.getElementById('signList').classList.remove('hidden');
-      document.getElementById('trainingList').classList.add('hidden');
+      document.getElementById('app').innerHTML = html + '</table>';
     }
-
-    function printSignList() {
-      const title = document.getElementById('signListHeading').textContent;
-      const tableContent = document.getElementById('signTable').outerHTML;
-      const printWindow = window.open('', '_blank');
-      
-      printWindow.document.write(`<html><head><title>${title}</title>`);
-      printWindow.document.write('<style>table { width:100%; border-collapse:collapse; } th,td { border:1px solid #000; padding:5px; text-align:center; } .sig-img { width:100px; height:50px; object-fit:contain; }</style>');
-      printWindow.document.write('</head><body>');
-      printWindow.document.write(`<h2>${title}</h2>`);
-      printWindow.document.write(tableContent);
-      printWindow.document.write('</body></html>');
-      printWindow.document.close();
-      printWindow.print();
-    }
-
-    refreshList();
+    loadList();
   </script>
 </body>
 </html>
