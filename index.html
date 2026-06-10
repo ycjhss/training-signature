@@ -1,38 +1,92 @@
-<script>
-  // (상단 코드는 그대로 두고, 아래 함수 2개만 수정/교체하세요)
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    body { font-family: 'Arial', sans-serif; padding: 20px; }
+    .hidden { display: none; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { border: 1px solid #000; padding: 8px; text-align: center; }
+    img { width: 100px; height: 50px; }
+  </style>
+</head>
+<body>
 
-  async function viewSignList(id, title) { 
-    currentTrainingId = id; 
-    hideAllSections(); 
-    document.getElementById('signListHeading').textContent = `${title} 명부`; 
-    showLoading('서명 데이터를 불러오는 중...');
-    const res = await callAPI('getSignatures', { trainingId: id });
-    hideLoading();
-    if(res.status === 'success') {
+  <div id="app">
+    <h1>연수 서명 시스템</h1>
+    <div id="trainingList">
+      <button onclick="refreshList()">목록 새로고침</button>
+      <table id="listTable">
+        <thead><tr><th>연수명</th><th>일자</th><th>기능</th></tr></thead>
+        <tbody id="listBody"></tbody>
+      </table>
+    </div>
+
+    <div id="signList" class="hidden">
+      <h2 id="signListHeading"></h2>
+      <button onclick="document.getElementById('signList').classList.add('hidden'); document.getElementById('trainingList').classList.remove('hidden');">목록으로</button>
+      <button onclick="printSignList()">인쇄하기</button>
+      <table>
+        <thead><tr><th>성명</th><th>소속/학번</th><th>역할</th><th>시간</th><th>서명</th></tr></thead>
+        <tbody id="signListBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    // 💡 아래 URL 부분을 선생님의 구글 웹앱 URL로 반드시 교체하세요!
+    const API_URL = "https://script.google.com/macros/s/AKfycbzd5HKBeZ7govXmHmU-TC206U9uIE0ClubvmOgMmkH22iFCUdrLzE9T4GMYmxs0xDLP/exec";
+
+    async function callAPI(action, params = {}) {
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action, ...params })
+      });
+      return await response.json();
+    }
+
+    async function refreshList() {
+      const res = await callAPI('getTrainingList');
+      const tbody = document.getElementById('listBody');
+      tbody.innerHTML = '';
+      res.data.forEach(item => {
+        tbody.innerHTML += `<tr>
+          <td>${item.title}</td>
+          <td>${item.date}</td>
+          <td><button onclick="viewSignList('${item.id}', '${item.title}')">명부보기</button></td>
+        </tr>`;
+      });
+    }
+
+    async function viewSignList(id, title) { 
+      document.getElementById('signListHeading').textContent = `${title} 명부`; 
+      const res = await callAPI('getSignatures', { trainingId: id });
       const tbody = document.getElementById('signListBody');
       tbody.innerHTML = '';
       res.data.forEach(item => {
-        // [수정] 서명 링크 대신 실제 이미지를 태그로 삽입하여 인쇄 시 보이게 함
         tbody.innerHTML += `<tr>
           <td>${item.name}</td>
           <td>${item.affiliation}</td>
           <td>${item.role}</td>
           <td>${item.timestamp}</td>
-          <td><img src="${item.url}" style="width:100px; height:50px;" /></td>
+          <td><img src="${item.url}" /></td>
         </tr>`;
       });
       document.getElementById('signList').classList.remove('hidden');
+      document.getElementById('trainingList').classList.add('hidden');
     }
-  }
 
-  // 인쇄 함수를 호출할 때 이미지가 깨지지 않도록 보완
-  function printSignList() {
-    const printWindow = window.open('', '_blank');
-    const content = document.getElementById('signList').innerHTML;
-    printWindow.document.write('<html><head><title>인쇄</title>');
-    printWindow.document.write('<style>table { width:100%; border-collapse:collapse; } th,td { border:1px solid #000; padding:5px; } img { width:80px; height:40px; }</style>');
-    printWindow.document.write('</head><body>' + content + '</body></html>');
-    printWindow.document.close();
-    printWindow.print();
-  }
-</script>
+    function printSignList() {
+      const content = document.getElementById('signList').innerHTML;
+      const printWindow = window.open('', '_blank');
+      printWindow.document.write('<html><head><title>서명부 인쇄</title>');
+      printWindow.document.write('<style>table { width:100%; border-collapse:collapse; } th,td { border:1px solid #000; padding:5px; text-align:center; } img { width:100px; height:50px; }</style>');
+      printWindow.document.write('</head><body>' + content + '</body></html>');
+      printWindow.document.close();
+      printWindow.print();
+    }
+
+    refreshList();
+  </script>
+</body>
+</html>
