@@ -19,21 +19,33 @@
         const API_URL = "https://script.google.com/macros/s/AKfycbw1b2Vik9iqrOnZgXfDgaPAsV7Vc3qC7hNw3TwDhduoTN5jC4Bp0mDQ8VA6dUbIaKwy/exec";
 
         async function loadList() {
-            const tbody = document.getElementById('listBody');
-            tbody.innerHTML = "<tr><td colspan='3'>데이터 불러오는 중...</td></tr>";
-            try {
-                const res = await fetch(API_URL, {
-                    method: 'POST',
-                    mode: 'no-cors', // 데이터가 안 나올 경우를 대비
-                    body: JSON.stringify({action: 'getTrainingList'})
+        const tbody = document.getElementById('listBody');
+        try {
+            // 구글 서버로 데이터 요청
+            const res = await fetch(API_URL, {
+                method: 'POST',
+                body: JSON.stringify({action: 'getTrainingList'})
+            });
+            
+            // 텍스트로 결과를 먼저 받아봅니다 (JSON 에러 확인용)
+            const text = await res.text();
+            console.log("서버 응답 내용:", text); // F12 콘솔에서 확인
+            
+            // 데이터 파싱
+            const data = JSON.parse(text);
+            if(data.status === 'success') {
+                tbody.innerHTML = '';
+                data.data.forEach(item => {
+                    tbody.innerHTML += `<tr><td>${item.title}</td><td>${item.date}</td><td><button>보기</button></td></tr>`;
                 });
-                // ... 이후 데이터 처리 로직 ...
-                alert("통신 시도 완료. F12 콘솔을 확인하세요.");
-            } catch(e) {
-                tbody.innerHTML = `<tr><td colspan='3'>에러: ${e.message}</td></tr>`;
+            } else {
+                tbody.innerHTML = `<tr><td colspan='3'>서버 에러: ${data.message}</td></tr>`;
             }
+        } catch(e) {
+            tbody.innerHTML = `<tr><td colspan='3'>연결 에러: ${e.message}</td></tr>`;
         }
-        loadList();
-    </script>
+    }
+    loadList();
+</script>
 </body>
 </html>
