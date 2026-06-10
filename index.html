@@ -12,7 +12,7 @@
 
   <script>
     // 💡 매우 중요: 구글 앱스크립트에서 배포 후 나오는 [웹 앱 URL]을 여기에 넣으세요
-    const API_URL = "https://script.google.com/macros/s/AKfycbzLWWQsAg-bW1v_q1ZhwN9Ui1Qo33SqfU6ZStb0fv3-F0JUCRcTmfYRFuRtA_7uQH2P/exec";
+    const API_URL = "https://script.google.com/macros/s/AKfycbydr2Vu_XRJx9YjlAjqyndDGT_slHQWlh_yX_OFNo5eIbZeNcz6-p9ATEgEBf-RaGUR/exec";
 
     async function loadList() {
       const res = await fetch(API_URL, {method:'POST', body: JSON.stringify({action: 'getTrainingList'})}).then(r=>r.json());
