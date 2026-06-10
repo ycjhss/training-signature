@@ -1,79 +1,102 @@
 <!DOCTYPE html>
-<html>
+<html lang="ko">
 <head>
-  <base target="_top">
-  <style>
-    body { font-family: 'Arial', sans-serif; padding: 20px; }
-    .hidden { display: none; }
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    th, td { border: 1px solid #000; padding: 8px; text-align: center; }
-    img { width: 100px; height: 50px; }
-    button { padding: 10px; margin: 5px; cursor: pointer; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>연수 서명부</title>
+    <style>
+        body { font-family: 'Arial', sans-serif; padding: 20px; }
+        .hidden { display: none; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #000; padding: 8px; text-align: center; vertical-align: middle; }
+        /* 인쇄 시 서명 이미지 크기 조절 */
+        .sig-img { width: 100px; height: 50px; object-fit: contain; }
+        button { padding: 10px; margin: 5px; cursor: pointer; }
+    </style>
 </head>
 <body>
 
-  <div id="mainView">
+  <div id="app">
     <h1>연수 서명 시스템</h1>
-    <button onclick="loadList()">목록 새로고침</button>
-    <table id="listTable">
-      <thead><tr><th>연수명</th><th>일자</th><th>명부보기</th></tr></thead>
-      <tbody id="listBody"></tbody>
-    </table>
-  </div>
+    <div id="trainingList">
+      <button onclick="refreshList()">목록 새로고침</button>
+      <table id="listTable">
+        <thead><tr><th>연수명</th><th>일자</th><th>기능</th></tr></thead>
+        <tbody id="listBody"></tbody>
+      </table>
+    </div>
 
-  <div id="signListView" class="hidden">
-    <h2 id="signTitle"></h2>
-    <button onclick="goBack()">뒤로가기</button>
-    <button onclick="printSignList()">인쇄하기</button>
-    <table id="signTable">
-      <thead><tr><th>성명</th><th>소속</th><th>역할</th><th>시간</th><th>서명</th></tr></thead>
-      <tbody id="signListBody"></tbody>
-    </table>
+    <div id="signList" class="hidden">
+      <h2 id="signListHeading"></h2>
+      <button onclick="document.getElementById('signList').classList.add('hidden'); document.getElementById('trainingList').classList.remove('hidden');">목록으로</button>
+      <button onclick="printSignList()">인쇄하기</button>
+      <table id="signTable">
+        <thead><tr><th>성명</th><th>소속/학번</th><th>역할</th><th>시간</th><th>서명</th></tr></thead>
+        <tbody id="signListBody"></tbody>
+      </table>
+    </div>
   </div>
 
   <script>
+    // 💡 구글 웹앱 URL (끝이 /exec로 끝나는 주소)
     const API_URL = "https://script.google.com/macros/s/AKfycbzd5HKBeZ7govXmHmU-TC206U9uIE0ClubvmOgMmkH22iFCUdrLzE9T4GMYmxs0xDLP/exec";
 
-    async function loadList() {
-      const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'getTrainingList' })}).then(r=>r.json());
+    async function callAPI(action, params = {}) {
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action, ...params })
+      });
+      return await response.json();
+    }
+
+    async function refreshList() {
+      const res = await callAPI('getTrainingList');
       const tbody = document.getElementById('listBody');
       tbody.innerHTML = '';
       res.data.forEach(item => {
-        tbody.innerHTML += `<tr><td>${item.title}</td><td>${item.date}</td>
-          <td><button onclick="viewList('${item.id}', '${item.title}')">보기</button></td></tr>`;
+        tbody.innerHTML += `<tr>
+          <td>${item.title}</td>
+          <td>${item.date}</td>
+          <td><button onclick="viewSignList('${item.id}', '${item.title}')">명부보기</button></td>
+        </tr>`;
       });
     }
 
-    async function viewList(id, title) {
-      document.getElementById('signTitle').textContent = title + " 명부";
-      const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'getSignatures', trainingId: id })}).then(r=>r.json());
+    async function viewSignList(id, title) { 
+      document.getElementById('signListHeading').textContent = `${title} 명부`; 
+      const res = await callAPI('getSignatures', { trainingId: id });
       const tbody = document.getElementById('signListBody');
       tbody.innerHTML = '';
       res.data.forEach(item => {
-        tbody.innerHTML += `<tr><td>${item.name}</td><td>${item.affiliation}</td><td>${item.role}</td><td>${item.timestamp}</td>
-          <td><img src="${item.url}" /></td></tr>`;
+        // [중요 수정] 서명 링크를 img 태그로 감싸서 인쇄 시 보이게 함
+        tbody.innerHTML += `<tr>
+          <td>${item.name}</td>
+          <td>${item.affiliation}</td>
+          <td>${item.role}</td>
+          <td>${item.timestamp}</td>
+          <td><img src="${item.url}" class="sig-img" /></td>
+        </tr>`;
       });
-      document.getElementById('mainView').classList.add('hidden');
-      document.getElementById('signListView').classList.remove('hidden');
-    }
-
-    function goBack() {
-      document.getElementById('mainView').classList.remove('hidden');
-      document.getElementById('signListView').classList.add('hidden');
+      document.getElementById('signList').classList.remove('hidden');
+      document.getElementById('trainingList').classList.add('hidden');
     }
 
     function printSignList() {
-      const content = document.getElementById('signListView').innerHTML;
-      const win = window.open('', '_blank');
-      win.document.write('<html><head><title>인쇄</title>');
-      win.document.write('<style>table { width:100%; border-collapse:collapse; } th,td { border:1px solid #000; padding:5px; } img { width:80px; height:40px; }</style>');
-      win.document.write('</head><body>' + content + '</body></html>');
-      win.document.close();
-      win.print();
+      const title = document.getElementById('signListHeading').textContent;
+      const tableContent = document.getElementById('signTable').outerHTML;
+      const printWindow = window.open('', '_blank');
+      
+      printWindow.document.write(`<html><head><title>${title}</title>`);
+      printWindow.document.write('<style>table { width:100%; border-collapse:collapse; } th,td { border:1px solid #000; padding:5px; text-align:center; } .sig-img { width:100px; height:50px; object-fit:contain; }</style>');
+      printWindow.document.write('</head><body>');
+      printWindow.document.write(`<h2>${title}</h2>`);
+      printWindow.document.write(tableContent);
+      printWindow.document.write('</body></html>');
+      printWindow.document.close();
+      printWindow.print();
     }
 
-    loadList();
+    refreshList();
   </script>
 </body>
 </html>
